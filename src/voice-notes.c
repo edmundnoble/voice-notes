@@ -92,6 +92,12 @@ static void init(void) {
   });
   const bool animated = true;
   window_stack_push(window, animated);
+  if (!persist_exists(PERSIST_KEY_NUM_NOTES)) {
+    persist_write_int(PERSIST_KEY_NUM_NOTES, 0);
+  }
+  if (!persist_exists(PERSIST_KEY_FIRST_NOTE)) {
+    persist_write_string(PERSIST_KEY_FIRST_NOTE, "Example note");
+  }
 }
 
 static void deinit(void) {
