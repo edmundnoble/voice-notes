@@ -118,6 +118,7 @@ static void dictation_status_handler(DictationSession *session, DictationSession
     num_notes += 1;
     persist_write_int(PERSIST_KEY_NUM_NOTES, (int32_t)num_notes);
   }
+  load_all_notes();
 }
 
 static void start_taking_note(void) {
@@ -127,11 +128,6 @@ static void start_taking_note(void) {
     dictation_session_enable_confirmation(dict_session, true);
   }
   dictation_session_start(dict_session);
-}
-
-static void timer_callback_stub(void *callback_data) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "In timer callback!");
-  start_taking_note();
 }
 
 static void delete_current_note(void) {
@@ -206,12 +202,11 @@ static void window_load(Window *window) {
     .content_offset_changed_handler = content_offset_changed_handler
   };
 
-  load_all_notes();
-
   if (launch_reason() == APP_LAUNCH_QUICK_LAUNCH) {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Registering timer callback!");
-    app_timer_register(0, timer_callback_stub, NULL);
-    //start_taking_note();
+    start_taking_note();
+  } else {
+    load_all_notes();
   }
 }
 
