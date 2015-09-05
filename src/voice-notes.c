@@ -74,14 +74,12 @@ static void redraw_notes(void) {
         note_font = fonts_get_system_font(FONT_KEY_GOTHIC_14);
         break;
     }
-    //text_layer_set_size(note_layers[i], text_layer_get_content_size(note_layers[i]));
     text_layer_set_font(note_layers[i], note_font);
     scroll_layer_add_child(note_scroll_layer, text_layer_get_layer(note_layers[i]));
     //text_layer_enable_paging(note_layers[i], bounds.size.h, 0);
   }
   scroll_layer_set_content_size(note_scroll_layer, scroll_content_bounds);
   scroll_layer_enable_paging(note_scroll_layer, 168);
-  //APP_LOG(APP_LOG_LEVEL_DEBUG, "Scroll layer paging height: %d", (int)(note_scroll_layer->paging.paging_disabled));
   layer_add_child(window_layer, scroll_layer_get_layer(note_scroll_layer));
   current_note_idx = saved_note_idx;
   scroll_layer_set_content_offset(note_scroll_layer, GPoint(0, current_note_idx * -168), false);
@@ -112,23 +110,6 @@ static void log_status(DictationSessionStatus status) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "Dictation session status: %d", (int)status);
 }
 
-static void delete_current_note(void) {
-  if (current_note_idx == 0) return; // TODO
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Tried to delete note: %d", (int)current_note_idx);
-  char note_buf[MAX_NOTE_SIZE];
-  for (uint32_t i = current_note_idx + 1; i < num_notes; i++) {
-      persist_read_string(PERSIST_KEY_FIRST_NOTE + i, note_buf, MAX_NOTE_SIZE);
-      persist_write_string(PERSIST_KEY_FIRST_NOTE + i - 1, note_buf);
-  }
-  persist_delete(PERSIST_KEY_FIRST_NOTE + num_notes);
-  num_notes -= 1;
-  persist_write_int(PERSIST_KEY_NUM_NOTES, num_notes);
-  if (current_note_idx + 1 == num_notes) {
-    current_note_idx -= 1;
-  }
-  load_all_notes();
-}
-
 static void dictation_status_handler(DictationSession *session, DictationSessionStatus status, char *transcription, void *context) {
   log_status(status);
   if (status == DictationSessionStatusSuccess) {
@@ -146,6 +127,28 @@ static void start_taking_note(void) {
     dictation_session_enable_confirmation(dict_session, true);
   }
   dictation_session_start(dict_session);
+}
+
+static void timer_callback_stub(void *callback_data) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "In timer callback!");
+  start_taking_note();
+}
+
+static void delete_current_note(void) {
+  if (current_note_idx == 0) return; // TODO
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Tried to delete note: %d", (int)current_note_idx);
+  char note_buf[MAX_NOTE_SIZE];
+  for (uint32_t i = current_note_idx + 1; i < num_notes; i++) {
+      persist_read_string(PERSIST_KEY_FIRST_NOTE + i, note_buf, MAX_NOTE_SIZE);
+      persist_write_string(PERSIST_KEY_FIRST_NOTE + i - 1, note_buf);
+  }
+  persist_delete(PERSIST_KEY_FIRST_NOTE + num_notes);
+  num_notes -= 1;
+  persist_write_int(PERSIST_KEY_NUM_NOTES, num_notes);
+  if (current_note_idx + 1 == num_notes) {
+    current_note_idx -= 1;
+  }
+  load_all_notes();
 }
 
 static void action_performed_callback(ActionMenu *action_menu, const ActionMenuItem *action, void *context) {
@@ -206,7 +209,9 @@ static void window_load(Window *window) {
   load_all_notes();
 
   if (launch_reason() == APP_LAUNCH_QUICK_LAUNCH) {
-    start_taking_note();
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Registering timer callback!");
+    app_timer_register(0, timer_callback_stub, NULL);
+    //start_taking_note();
   }
 }
 
